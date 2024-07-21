@@ -10,6 +10,10 @@ ContextUPtr Context::Create() {
 
 void Context::ProcessInput(GLFWwindow* window) {
     const float cameraSpeed = 0.05f;
+
+    if (!m_cameraControl)
+        return;
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         m_cameraPos += cameraSpeed * m_cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -26,6 +30,40 @@ void Context::ProcessInput(GLFWwindow* window) {
         m_cameraPos += cameraSpeed * cameraUp;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
         m_cameraPos -= cameraSpeed * cameraUp;
+}
+
+void Context::MouseMove(double x, double y) {
+    if (!m_cameraControl)
+        return;
+
+    auto pos = glm::vec2((float)x, (float)y);
+    auto deltaPos = pos - m_prevMousePos;
+
+    const float cameraRotSpeed = 0.8f;
+    m_cameraYaw -= deltaPos.x * cameraRotSpeed;
+    m_cameraPitch -= deltaPos.y * cameraRotSpeed;
+
+    if (m_cameraYaw < 0.0f)   m_cameraYaw += 360.0f;
+    if (m_cameraYaw > 360.0f) m_cameraYaw -= 360.0f;
+
+    if (m_cameraPitch > 89.0f)  m_cameraPitch = 89.0f;
+    if (m_cameraPitch < -89.0f) m_cameraPitch = -89.0f;
+
+    m_prevMousePos = pos;   
+}
+
+void Context::MouseButton(int button, int action, double x, double y) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
+            // 마우스 조작 시작 시점에 현재 마우스 커서 위치 저장
+            m_prevMousePos = glm::vec2((float)x, (float)y);
+            m_cameraControl = true;
+        }
+
+        else if (action == GLFW_RELEASE) {
+            m_cameraControl = false;
+        }
+    }
 }
 
 void Context::Reshape(int width, int height) {
@@ -122,14 +160,6 @@ bool Context::Init() {
 	m_program->SetUniform("tex", 0);
     m_program->SetUniform("tex2", 1);
 
-    auto model = glm::rotate(glm::mat4(1.0f), glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    auto view = glm::translate(glm::mat4(1.0f),
-    glm::vec3(0.0f, 0.0f, -3.0f));
-    auto projection = glm::perspective(glm::radians(45.0f), (float)640 / (float)480, 0.01f, 10.0f);
-
-    auto transform = projection * view * model;
-    m_program->SetUniform("transform", transform);
-
     return true;
 }
 
@@ -149,6 +179,10 @@ void Context::Render() {
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
+
+    m_cameraFront =  glm::rotate(glm::mat4(1.0f), glm::radians(m_cameraYaw), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(glm::mat4(1.0f), 
+            glm::radians(m_cameraPitch), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+
     auto projection = glm::perspective(glm::radians(45.0f), (float)m_width / (float)m_height, 0.01f, 20.0f);
 
     auto view = glm::lookAt(m_cameraPos, m_cameraPos + m_cameraFront, m_cameraUp);

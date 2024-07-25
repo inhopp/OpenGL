@@ -75,9 +75,6 @@ void Context::Reshape(int width, int height) {
 
 bool Context::Init() {
     m_box = Mesh::CreateBox();
-    m_model = Model::Load("./model/backpack.obj");
-    if (!m_model)
-        return false;
 
     m_simpleProgram = Program::Create("./shader/simple.vs", "./shader/simple.fs");
     if (!m_simpleProgram)
@@ -99,15 +96,6 @@ bool Context::Init() {
     auto image2 = Image::Load("./image/awesomeface.png");
     m_texture2 = Texture::CreateFromImage(image2.get());
 
-    // m_material.diffuse = Texture::CreateFromImage(Image::Load("./image/container2.png").get());
-    // m_material.specular = Texture::CreateFromImage(Image::Load("./image/container2_specular.png").get());
-
-    m_material.diffuse = Texture::CreateFromImage(Image::CreateSingleColorImage(4, 4,
-                                glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
-
-    m_material.specular = Texture::CreateFromImage(Image::CreateSingleColorImage(4, 4,
-                                glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)).get());
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texture->Get());
     glActiveTexture(GL_TEXTURE1);
@@ -116,6 +104,29 @@ bool Context::Init() {
     m_program->Use();
 	m_program->SetUniform("tex", 0);
     m_program->SetUniform("tex2", 1);
+
+    TexturePtr darkGrayTexture = Texture::CreateFromImage(
+                                Image::CreateSingleColorImage(4, 4,
+                                glm::vec4(0.2f, 0.2f, 0.2f, 1.0f)).get());
+
+    TexturePtr grayTexture = Texture::CreateFromImage(
+                                Image::CreateSingleColorImage(4, 4,
+                                glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)).get());
+        
+    m_planeMaterial = Material::Create();
+    m_planeMaterial->diffuse = Texture::CreateFromImage(Image::Load("./image/marble.jpg").get());
+    m_planeMaterial->specular = grayTexture;
+    m_planeMaterial->shininess = 128.0f;
+
+    m_box1Material = Material::Create();
+    m_box1Material->diffuse = Texture::CreateFromImage(Image::Load("./image/container.jpg").get());
+    m_box1Material->specular = darkGrayTexture;
+    m_box1Material->shininess = 16.0f;
+
+    m_box2Material = Material::Create();
+    m_box2Material->diffuse = Texture::CreateFromImage(Image::Load("./image/container2.png").get());
+    m_box2Material->specular = Texture::CreateFromImage(Image::Load("./image/container2_specular.png").get());
+    m_box2Material->shininess = 64.0f;
 
     return true;
 }
@@ -134,10 +145,6 @@ void Context::Render() {
                 ImGui::ColorEdit3("l.specular", glm::value_ptr(m_light.specular));
                 ImGui::Checkbox("flash light", &m_flashLightMode);
             }
-            
-            if (ImGui::CollapsingHeader("material", ImGuiTreeNodeFlags_DefaultOpen)) {
-                ImGui::DragFloat("m.shininess", &m_material.shininess, 1.0f, 1.0f, 256.0f);
-            }
         }
 
         ImGui::Checkbox("animation", &m_animation);
@@ -148,13 +155,13 @@ void Context::Render() {
     }
     ImGui::End();
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
     m_cameraFront =  glm::rotate(glm::mat4(1.0f), glm::radians(m_cameraYaw), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(glm::mat4(1.0f), 
             glm::radians(m_cameraPitch), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
 
-    auto projection = glm::perspective(glm::radians(45.0f), (float)m_width / (float)m_height, 0.01f, 20.0f);
+    auto projection = glm::perspective(glm::radians(45.0f), (float)m_width / (float)m_height, 0.5f, 20.0f);
 
     auto view = glm::lookAt(m_cameraPos, m_cameraPos + m_cameraFront, m_cameraUp);
 
@@ -185,17 +192,50 @@ void Context::Render() {
     m_program->SetUniform("light.diffuse", m_light.diffuse);
     m_program->SetUniform("light.specular", m_light.specular);
 
-    m_program->SetUniform("material.diffuse", 0);
-    m_program->SetUniform("material.specular", 1);
-    m_program->SetUniform("material.shininess", m_material.shininess);
-    glActiveTexture(GL_TEXTURE0);
-    m_material.diffuse->Bind();
-    glActiveTexture(GL_TEXTURE1);
-    m_material.specular->Bind();
-
-    auto modelTransform = glm::mat4(1.0f);
+    auto modelTransform =
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(10.0f, 1.0f, 10.0f));
     auto transform = projection * view * modelTransform;
     m_program->SetUniform("transform", transform);
     m_program->SetUniform("modelTransform", modelTransform);
-    m_model->Draw(m_program.get());
+    m_planeMaterial->SetToProgram(m_program.get());
+    m_box->Draw(m_program.get());
+
+    modelTransform =
+        glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.75f, -4.0f)) *
+        glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+    transform = projection * view * modelTransform;
+    m_program->SetUniform("transform", transform);
+    m_program->SetUniform("modelTransform", modelTransform);
+    m_box1Material->SetToProgram(m_program.get());
+    m_box->Draw(m_program.get());
+
+    glEnable(GL_STENCIL_TEST);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
+
+    modelTransform =
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.75f, 2.0f)) *
+        glm::rotate(glm::mat4(1.0f), glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+    transform = projection * view * modelTransform;
+    m_program->SetUniform("transform", transform);
+    m_program->SetUniform("modelTransform", modelTransform);
+    m_box2Material->SetToProgram(m_program.get());
+    m_box->Draw(m_program.get());
+
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilMask(0x00);
+    glDisable(GL_DEPTH_TEST);
+    m_simpleProgram->Use();
+    m_simpleProgram->SetUniform("color", glm::vec4(1.0f, 1.0f, 0.5f, 1.0f));
+    m_simpleProgram->SetUniform("transform", transform * glm::scale(glm::mat4(1.0f), glm::vec3(1.05f, 1.05f, 1.05f)));
+    m_box->Draw(m_simpleProgram.get());
+
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
 }

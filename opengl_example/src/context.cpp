@@ -71,10 +71,13 @@ void Context::Reshape(int width, int height) {
     m_width = width;
     m_height = height;
     glViewport(0, 0, m_width, m_height);
+
+    m_framebuffer = Framebuffer::Create(Texture::Create(width, height, GL_RGBA));
 }
 
 bool Context::Init() {
     m_box = Mesh::CreateBox();
+    m_plane = Mesh::CreatePlane();
 
     m_simpleProgram = Program::Create("./shader/simple.vs", "./shader/simple.fs");
     if (!m_simpleProgram)
@@ -84,26 +87,15 @@ bool Context::Init() {
     if (!m_program)
         return false;
 
-    // texture
-    auto image = Image::Load("./image/container.jpg");
-    if (!image) 
+    m_textureProgram = Program::Create("./shader/texture.vs", "./shader/texture.fs");
+    if (!m_textureProgram)
         return false;
-    SPDLOG_INFO("image: {}x{}, {} channels", image->GetWidth(), image->GetHeight(), image->GetChannelCount());
 
+    m_postProgram = Program::Create("./shader/texture.vs", "./shader/gamma.fs");
+    if (!m_postProgram)
+        return false;
 
-    m_texture = Texture::CreateFromImage(image.get());
-
-    auto image2 = Image::Load("./image/awesomeface.png");
-    m_texture2 = Texture::CreateFromImage(image2.get());
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_texture->Get());
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_texture2->Get());
-
-    m_program->Use();
-	m_program->SetUniform("tex", 0);
-    m_program->SetUniform("tex2", 1);
+    m_windowTexture = Texture::CreateFromImage(Image::Load("./image/blending_transparent_window.png").get());
 
     TexturePtr darkGrayTexture = Texture::CreateFromImage(
                                 Image::CreateSingleColorImage(4, 4,
@@ -152,8 +144,12 @@ void Context::Render() {
         if (ImGui::ColorEdit4("clear color", glm::value_ptr(m_clearColor))) {
             glClearColor(m_clearColor.r, m_clearColor.g, m_clearColor.b, m_clearColor.a);
         }
+
+        ImGui::DragFloat("gamma", &m_gamma, 0.01f, 0.0f, 2.0f);
     }
     ImGui::End();
+
+    m_framebuffer->Bind();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -236,6 +232,38 @@ void Context::Render() {
 
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
-    glStencilFunc(GL_ALWAYS, 1, 0xFF);
     glStencilMask(0xFF);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    m_textureProgram->Use();
+    m_windowTexture->Bind();
+    m_textureProgram->SetUniform("tex", 0);
+
+    modelTransform = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 4.0f));
+    transform = projection * view * modelTransform;
+    m_textureProgram->SetUniform("transform", transform);
+    m_plane->Draw(m_textureProgram.get());
+
+    modelTransform = glm::translate(glm::mat4(1.0f), glm::vec3(0.2f, 0.5f, 5.0f));
+    transform = projection * view * modelTransform;
+    m_textureProgram->SetUniform("transform", transform);
+    m_plane->Draw(m_textureProgram.get());
+
+    modelTransform = glm::translate(glm::mat4(1.0f), glm::vec3(0.4f, 0.5f, 6.0f));
+    transform = projection * view * modelTransform;
+    m_textureProgram->SetUniform("transform", transform);
+    m_plane->Draw(m_textureProgram.get());
+
+    Framebuffer::BindToDefault();
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    m_postProgram->Use();
+    m_postProgram->SetUniform("transform", glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 1.0f)));
+    m_postProgram->SetUniform("gamma", m_gamma);
+    m_framebuffer->GetColorAttachment()->Bind();
+    m_postProgram->SetUniform("tex", 0);
+    m_plane->Draw(m_postProgram.get());    
 }

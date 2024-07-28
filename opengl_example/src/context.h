@@ -30,6 +30,10 @@ private:
     ProgramUPtr m_textureProgram;
     ProgramUPtr m_postProgram;
 
+    CubeTextureUPtr m_cubeTexture;
+    ProgramUPtr m_skyboxProgram;
+    ProgramUPtr m_envMapProgram;
+
     float m_gamma {1.0f};
     
     MeshUPtr m_box;

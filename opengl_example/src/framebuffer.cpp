@@ -27,18 +27,18 @@ void Framebuffer::Bind() const {
 bool Framebuffer::InitWithColorAttachment(const TexturePtr colorAttachment) {
     m_colorAttachment = colorAttachment;
     glGenFramebuffers(1, &m_framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer); // 화면이 아닌 frame buffer에 그리겠다
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER,
-        GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-        colorAttachment->Get(), 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,              // frame buffer에 texture 붙이기
+        GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,            // 바인딩 해놓은 framebuffer에 color texture를 붙일거야
+        colorAttachment->Get(), 0);                     
 
     glGenRenderbuffers(1, &m_depthStencilBuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, m_depthStencilBuffer);
-    glRenderbufferStorage(
-        GL_RENDERBUFFER, GL_DEPTH24_STENCIL8,
+    glRenderbufferStorage(                                          // render buffer의 포맷 지정
+        GL_RENDERBUFFER, GL_DEPTH24_STENCIL8,       
         colorAttachment->GetWidth(), colorAttachment->GetHeight());
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0); // 특정 buffer가 아닌 디폴트
 
     glFramebufferRenderbuffer(
         GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,

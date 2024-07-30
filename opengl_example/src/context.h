@@ -34,6 +34,12 @@ private:
     ProgramUPtr m_skyboxProgram;
     ProgramUPtr m_envMapProgram;
 
+    TexturePtr m_grassTexture;
+    ProgramUPtr m_grassProgram;
+    std::vector<glm::vec3> m_grassPos;
+    BufferUPtr m_grassPosBuffer;
+    VertexLayoutUPtr m_grassInstance;
+
     float m_gamma {1.0f};
     
     MeshUPtr m_box;

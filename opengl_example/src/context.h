@@ -65,6 +65,7 @@ private:
     };
     Light m_light;
     bool m_flashLightMode { false };
+    bool m_blinn { false };
     
     bool m_cameraControl { false };
     glm::vec2 m_prevMousePos { glm::vec2(0.0f) };

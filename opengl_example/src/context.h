@@ -79,9 +79,15 @@ private:
     glm::vec3 m_cameraFront { glm::vec3(0.0f, 0.0f, -1.0f) };
     glm::vec3 m_cameraUp { glm::vec3(0.0f, 1.0f, 0.0f) };
 
+    // shadow map
     FramebufferUPtr m_framebuffer;
     ShadowMapUPtr m_shadowMap;
     ProgramUPtr m_lightingShadowProgram;
+
+    // normal map
+    TextureUPtr m_brickDiffuseTexture;
+    TextureUPtr m_brickNormalTexture;
+    ProgramUPtr m_normalProgram;
 
     int m_width {WINDOW_WIDTH};
     int m_height {WINDOW_HEIGHT};

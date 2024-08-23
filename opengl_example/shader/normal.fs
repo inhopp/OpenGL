@@ -28,7 +28,7 @@ void main() {
     vec3 diffuse = diff * texColor * 0.8;
 
     vec3 viewDir = normalize(viewPos - position);
-    vec3 reflectDir = reflect(-lightDir, pixelNorm);
+    vec3 reflectDir = reflect(-flightDir, pixelNorm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = spec * vec3(0.5);
 

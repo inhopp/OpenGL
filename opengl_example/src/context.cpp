@@ -302,9 +302,24 @@ void Context::Render() {
         m_deferLightProgram->SetUniform(posName, m_deferLights[i].position);
         m_deferLightProgram->SetUniform(colorName, m_deferLights[i].color);
     }
-    m_deferLightProgram->SetUniform("transform",
-    glm::scale(glm::mat4(1.0f), glm::vec3(2.0f)));
+    m_deferLightProgram->SetUniform("transform", glm::scale(glm::mat4(1.0f), glm::vec3(2.0f)));
     m_plane->Draw(m_deferLightProgram.get());
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_deferGeoFramebuffer->Get());
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, m_width, m_height,
+        0, 0, m_width, m_height,
+        GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    m_simpleProgram->Use();
+    for (size_t i = 0; i < m_deferLights.size(); i++) {
+        m_simpleProgram->SetUniform("color", glm::vec4(m_deferLights[i].color, 1.0f));
+        m_simpleProgram->SetUniform("transform", projection * view *
+            glm::translate(glm::mat4(1.0f), m_deferLights[i].position) *
+            glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
+        m_box->Draw(m_simpleProgram.get());
+    }
 
     // auto skyboxModelTransform =
     //     glm::translate(glm::mat4(1.0), m_cameraPos) *
